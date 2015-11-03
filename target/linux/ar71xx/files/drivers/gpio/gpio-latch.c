@@ -18,7 +18,7 @@
 
 #include <linux/platform_data/gpio-latch.h>
 
-struct gpio_latch_chip {
+typedef struct gpio_latch_chip_s {
 	struct gpio_chip gc;
 
 	struct mutex mutex;
@@ -27,11 +27,11 @@ struct gpio_latch_chip {
 	int le_gpio;
 	bool le_active_low;
 	int *gpios;
-};
+}gpio_latch_chip_t;
 
-static inline struct gpio_latch_chip *to_gpio_latch_chip(struct gpio_chip *gc)
+static inline gpio_latch_chip_t *to_gpio_latch_chip(struct gpio_chip *gc)
 {
-	return container_of(gc, struct gpio_latch_chip, gc);
+	return container_of(gc,gpio_latch_chip_t, gc);
 }
 
 static void gpio_latch_lock(struct gpio_latch_chip *glc, bool enable)

@@ -21,15 +21,15 @@
 #define NXP_74HC153_S1_MASK	0x2
 #define NXP_74HC153_BANK_MASK	0x4
 
-struct nxp_74hc153_chip {
+typedef struct nxp_74hc153_chip_s {
 	struct device		*parent;
 	struct gpio_chip	gpio_chip;
 	struct mutex		lock;
-};
+}nxp_74hc153_chip_t;
 
-static struct nxp_74hc153_chip *gpio_to_nxp(struct gpio_chip *gc)
+static nxp_74hc153_chip_t* gpio_to_nxp(struct gpio_chip *gc)
 {
-	return container_of(gc, struct nxp_74hc153_chip, gpio_chip);
+	return container_of(gc, nxp_74hc153_chip_t, gpio_chip);
 }
 
 static int nxp_74hc153_direction_input(struct gpio_chip *gc, unsigned offset)
@@ -43,26 +43,36 @@ static int nxp_74hc153_direction_output(struct gpio_chip *gc,
 	return -EINVAL;
 }
 
-static int nxp_74hc153_get_value(struct gpio_chip *gc, unsigned offset)
+static int nxp_74hc153_get_value(struct gpio_chip *gc, unsigned char offset)
 {
-	struct nxp_74hc153_chip *nxp;
-	struct nxp_74hc153_platform_data *pdata;
-	unsigned s0;
-	unsigned s1;
-	unsigned pin;
+	nxp_74hc153_chip_t *ptrto_74hc153_chip,*ptrto_74hc153;
+	struct nxp_74hc153_platform_data *ptrto_74hc153_platform_data,*ptr__74hc153_platform_data;
+	unsigned char s0;
+	unsigned char s1;
+	unsigned char pin;
 	int ret;
-
-	nxp = gpio_to_nxp(gc);
-	pdata = nxp->parent->platform_data;
-
-	s0 = !!(offset & NXP_74HC153_S0_MASK);
-	s1 = !!(offset & NXP_74HC153_S1_MASK);
-	pin = (offset & NXP_74HC153_BANK_MASK) ? pdata->gpio_pin_2y
-					       : pdata->gpio_pin_1y;
+        if(ptrto_74hc153_chip){
+	ptrto_74hc153 = gpio_to_nxp(gc);
+	
+	if(ptrto_74hc153_platform_data){
+	ptr__74hc153_platform_data = ptrto_74hc153->parent->platform_data;
+	s0 = (offset & NXP_74HC153_S0_MASK);
+	s1 = (offset & NXP_74HC153_S1_MASK);
+	pin =(offset & NXP_74HC153_BANK_MASK) ? ptr__74hc153_platform_data->gpio_pin_2y
+					       : ptr__74hc153_platform_data->gpio_pin_1y;
 
 	mutex_lock(&nxp->lock);
-	gpio_set_value(pdata->gpio_pin_s0, s0);
-	gpio_set_value(pdata->gpio_pin_s1, s1);
+	gpio_set_value(ptr__74hc153_platform_data->gpio_pin_s0, s0);
+	gpio_set_value(ptr__74hc153_platform_data->gpio_pin_s1, s1);
+	}else{
+	dev_err(&pdev->dev, "Error :Memory allocation \n");
+		return -ENOMEM;		
+	}
+        } //if ptrto_74hc153_chip
+        else{
+        dev_err(&pdev->dev, "Error :Memory allocation \n");
+		return -ENOMEM;	
+        }//else ptrto_74hc153_chip
 	ret = gpio_get_value(pin);
 	mutex_unlock(&nxp->lock);
 
@@ -78,7 +88,8 @@ static void nxp_74hc153_set_value(struct gpio_chip *gc,
 static int nxp_74hc153_probe(struct platform_device *pdev)
 {
 	struct nxp_74hc153_platform_data *pdata;
-	struct nxp_74hc153_chip *nxp;
+	//struct nxp_74hc153_chip *nxp;
+	nxp_74hc153_chip_t* ptrto_4hc153_chip_data;
 	struct gpio_chip *gc;
 	int err;
 
@@ -88,8 +99,8 @@ static int nxp_74hc153_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	nxp = kzalloc(sizeof(struct nxp_74hc153_chip), GFP_KERNEL);
-	if (nxp == NULL) {
+	ptrto_4hc153_chip_data = kzalloc(sizeof(nxp_74hc153_chip_t), GFP_KERNEL);
+	if (ptrto_4hc153_chip_data == NULL) {
 		dev_err(&pdev->dev, "no memory for private data\n");
 		return -ENOMEM;
 	}
@@ -154,11 +165,14 @@ static int nxp_74hc153_probe(struct platform_device *pdev)
 		goto err_free_2y;
 	}
 
-	nxp->parent = &pdev->dev;
-	mutex_init(&nxp->lock);
+	//nxp->parent = &pdev->dev;
+	//mutex_init(&nxp->lock);
 
-	gc = &nxp->gpio_chip;
-
+        //gc = &nxp->gpio_chip;
+        ptrto_4hc153_chip_data->parent = &pdev->dev;
+        mutex_init(&ptrto_4hc153_chip_data->lock);
+        gc = &ptrto_4hc153_chip_data->gpio_chip;
+        
 	gc->direction_input  = nxp_74hc153_direction_input;
 	gc->direction_output = nxp_74hc153_direction_output;
 	gc->get = nxp_74hc153_get_value;
@@ -167,17 +181,17 @@ static int nxp_74hc153_probe(struct platform_device *pdev)
 
 	gc->base = pdata->gpio_base;
 	gc->ngpio = NXP_74HC153_NUM_GPIOS;
-	gc->label = dev_name(nxp->parent);
-	gc->dev = nxp->parent;
+	gc->label = dev_name(ptrto_4hc153_chip_data->parent);
+	gc->dev = ptrto_4hc153_chip_data->parent;
 	gc->owner = THIS_MODULE;
 
-	err = gpiochip_add(&nxp->gpio_chip);
+	err = gpiochip_add(&ptrto_4hc153_chip_data->gpio_chip);
 	if (err) {
 		dev_err(&pdev->dev, "unable to add gpio chip, err=%d\n", err);
 		goto err_free_2y;
 	}
 
-	platform_set_drvdata(pdev, nxp);
+	platform_set_drvdata(pdev, ptrto_4hc153_chip_data);
 	return 0;
 
 err_free_2y:
@@ -189,20 +203,30 @@ err_free_s1:
 err_free_s0:
 	gpio_free(pdata->gpio_pin_s0);
 err_free_nxp:
-	kfree(nxp);
+	kfree(ptrto_4hc153_chip_data);
 	return err;
 }
 
 static int nxp_74hc153_remove(struct platform_device *pdev)
 {
-	struct nxp_74hc153_chip *nxp = platform_get_drvdata(pdev);
-	struct nxp_74hc153_platform_data *pdata = pdev->dev.platform_data;
-
-	if (nxp) {
+	//struct nxp_74hc153_chip *nxp = platform_get_drvdata(pdev);
+	nxp_74hc153_chip_t* ptrto_4hc153_chip_data,*ptr_4hc153_chip_data;
+	if(pdev){
+	ptrto_4hc153_chip_data = platform_get_drvdata(pdev);
+	}else{
+		
+	}
+	struct nxp_74hc153_platform_data *pdata;
+	if(pdata){
+	pdata = pdev->dev.platform_data;
+	}else{
+		
+	}
+	if (ptrto_4hc153_chip_data) {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,15,0)
 		int err;
 
-		err = gpiochip_remove(&nxp->gpio_chip);
+		err = gpiochip_remove(&ptr_4hc153_chip_data->gpio_chip);
 		if (err) {
 			dev_err(&pdev->dev,
 				"unable to remove gpio chip, err=%d\n",
@@ -210,14 +234,14 @@ static int nxp_74hc153_remove(struct platform_device *pdev)
 			return err;
 		}
 #else
-		gpiochip_remove(&nxp->gpio_chip);
+		gpiochip_remove(&ptr_4hc153_chip_data->gpio_chip);
 #endif
 		gpio_free(pdata->gpio_pin_2y);
 		gpio_free(pdata->gpio_pin_1y);
 		gpio_free(pdata->gpio_pin_s1);
 		gpio_free(pdata->gpio_pin_s0);
 
-		kfree(nxp);
+		kfree(ptr_4hc153_chip_data);
 		platform_set_drvdata(pdev, NULL);
 	}
 
